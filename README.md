@@ -20,12 +20,11 @@
 └──────────────┘   └──────────────┘   └──────────────┘
 ```
 
-### 核心优势
+### 为什么这样设计？
 
-1. **独立上下文** - 每个 Sub-Agent 有自己的对话历史，避免上下文污染
-2. **并行执行** - 同时分析多个事件、多个时间段、多个维度
-3. **职责分离** - Skill 负责"何时触发"，Agent 负责"如何执行"
-4. **性能提升** - 并行数据获取，减少用户等待时间
+- 每个 Sub-Agent 有独立上下文，不会互相干扰
+- 多个 Agent 可以并行跑，比如同时分析三个事件或三个月的数据
+- Skill 只管「什么时候触发」，Agent 只管「怎么干活」，各司其职
 
 ## 安装
 
@@ -95,17 +94,10 @@
 **触发词**: "postmortem", "事后分析", "error budget", "错误预算", "SLO", "SLI", "toil", "琐事", "reliability", "可靠性"
 
 **执行方式**:
-- **事后分析**: `flashduty-postmortem-generator` 生成无责备分析报告
-- **错误预算**: `flashduty-error-budget-tracker` 追踪 SLO 合规性
-- **琐事分析**: `flashduty-toil-analyzer` 识别自动化机会
-- **发布决策**: 基于错误预算状态建议是否发布
-
-**SRE 核心功能**:
-- 错误预算计算和燃烧率分析
-- 无责备事后分析（5 Whys 根因分析）
-- 琐事识别和自动化路线图
-- 多服务 SLO 对比仪表板
-- 发布安全评估（基于错误预算）
+- **事后分析**: `flashduty-postmortem-generator` 生成无责备分析报告（5 Whys 根因分析）
+- **错误预算**: `flashduty-error-budget-tracker` 追踪 SLO 合规性、计算燃烧率
+- **琐事分析**: `flashduty-toil-analyzer` 识别自动化机会、生成路线图
+- **发布决策**: 根据错误预算剩余量判断能不能发布
 
 ## 项目结构
 
@@ -211,7 +203,7 @@ flashduty-assistant/
 → 推荐最佳指派对象
 ```
 
-### SRE 最佳实践（新增）
+### SRE 实践
 
 ```
 # 事后分析（无责备文化）
@@ -255,7 +247,9 @@ flashduty-assistant/
 
 ## Sub-Agent 并行执行模式
 
-### 模式 1: 多事件并行诊断
+并行的思路很简单：把可以同时跑的任务拆给不同 Agent，最后汇总。下面是几种典型场景：
+
+### 多事件并行诊断
 
 ```javascript
 User: "分析事件 A、B、C"
@@ -266,63 +260,55 @@ User: "分析事件 A、B、C"
 → 汇总发现
 ```
 
-### 模式 2: 多协作空间对比
+### 多维度 / 多 Channel / 多时间段对比
+
+这三种场景结构相同——按维度拆分，每个维度一个 Agent：
 
 ```javascript
+// 多 Channel 对比
 User: "对比基础架构和数据库的故障"
 → Parallel:
    Task({ agent: "stats-collector", channel: "基础架构", time_range: "7d" })
    Task({ agent: "stats-collector", channel: "数据库", time_range: "7d" })
-→ 生成对比表格
-```
 
-### 模式 3: 多维度并行分析
-
-```javascript
+// 多维度分析（severity / channel / trend 同时跑）
 User: "全面分析故障"
 → Parallel:
    Task({ agent: "stats-collector", dimension: "severity", time_range: "7d" })
    Task({ agent: "stats-collector", dimension: "channel", time_range: "7d" })
    Task({ agent: "stats-collector", dimension: "trend", time_range: "30d" })
-→ 综合报告
 ```
 
-### 模式 4: SRE 事后分析
+### SRE 场景：诊断 + 事后分析 / 多服务预算 / 月度审查
 
 ```javascript
+// 诊断和事后分析可以同时启动
 User: "分析事件并生成事后报告"
 → Parallel:
-   Task({ agent: "flashduty-diagnosis-engine", incident: "FD123" })
-   Task({ agent: "flashduty-postmortem-generator", incident: "FD123" })
-→ 诊断报告 + 无责备事后分析
-```
+   Task({ agent: "diagnosis-engine", incident: "FD123" })
+   Task({ agent: "postmortem-generator", incident: "FD123" })
 
-### 模式 5: 多服务错误预算追踪
-
-```javascript
+// 多服务错误预算
 User: "检查所有服务的 SLO"
 → Parallel:
-   Task({ agent: "flashduty-error-budget-tracker", service: "api-gateway" })
-   Task({ agent: "flashduty-error-budget-tracker", service: "payment" })
-   Task({ agent: "flashduty-error-budget-tracker", service: "user-service" })
-→ 综合 SLO 仪表板
-```
+   Task({ agent: "error-budget-tracker", service: "api-gateway" })
+   Task({ agent: "error-budget-tracker", service: "payment" })
+   Task({ agent: "error-budget-tracker", service: "user-service" })
 
-### 模式 6: SRE 月度评审
-
-```javascript
+// 月度 SRE 报告（三种 Agent 各跑一份）
 User: "月度 SRE 报告"
 → Parallel:
-   Task({ agent: "flashduty-error-budget-tracker", scope: "all-services", time_range: "30d" })
-   Task({ agent: "flashduty-toil-analyzer", time_range: "30d" })
-   Task({ agent: "flashduty-stats-collector", metrics: ["MTTR", "MTTA"], time_range: "30d" })
-→ 可靠性 + 效率 + 性能 综合报告
+   Task({ agent: "error-budget-tracker", scope: "all-services", time_range: "30d" })
+   Task({ agent: "toil-analyzer", time_range: "30d" })
+   Task({ agent: "stats-collector", metrics: ["MTTR", "MTTA"], time_range: "30d" })
 ```
 
 ## 依赖
 
 - Claude Code 插件系统
 - FlashDuty MCP 服务器
+
+> **注意**: 本插件需要搭配 [flashduty-mcp-server](https://github.com/futuretea/flashduty-mcp-server) 使用。请先完成 flashduty-mcp-server 的安装和配置，详见其 [README](https://github.com/futuretea/flashduty-mcp-server#readme)。
 
 ### 时间参数
 
@@ -359,29 +345,6 @@ FlashDuty MCP 服务器的 `list_incidents`、`list_alerts`、`get_incident_stat
 3. 说明输入输出格式
 4. 从 skill 中引用
 
-**SRE Agent 模板**:
-```markdown
----
-name: flashduty-sre-agent-name
-description: Specific SRE task this agent handles
-tools: ["mcp__flashduty__xxx"]
-parallel: true
----
-
-# SRE Agent Title
-
-## SRE Principles Applied
-- Error Budgets
-- Blameless Culture
-- Automation First
-
-## Input Format
-Parameters specific to SRE analysis
-
-## Output Format
-Structured SRE report
-```
-
 ### 添加 Skill
 
 1. 创建 `skills/<skill-name>/SKILL.md`
@@ -389,28 +352,20 @@ Structured SRE report
 3. 说明何时调用哪个 sub-agent
 4. 提供并行执行模式示例
 
-### SRE 事后分析（新增）
-
-当添加新功能时，考虑：
-- 是否支持错误预算追踪？
-- 是否有助于减少琐事（toil）？
-- 是否促进无责备文化？
-- 是否可自动化？
-
 ### Agent 文件格式
 
 ```markdown
 ---
-name: flashduty-agent-name
+name: flashduty-agent-name       # 统一 flashduty- 前缀
 description: When to use this agent
-tools: ["mcp__flashduty__xxx"]
-parallel: true
+tools: ["mcp__flashduty__xxx"]   # 需要的 MCP 工具
+parallel: true                   # 是否支持并行
 ---
 
 # Agent Title
 
-## Responsibilities
-What this agent does
+## Responsibilities / SRE Principles
+What this agent does (SRE Agent 还应说明适用的 SRE 原则)
 
 ## Input Format
 Parameters it accepts
@@ -421,6 +376,8 @@ Structured response format
 ## Execution Strategy
 How to parallelize operations
 ```
+
+添加新功能时，值得想一下：能不能跟错误预算挂钩？能不能减少琐事？能不能自动化？
 
 ## License
 

@@ -184,7 +184,7 @@ Task({
 → 展示对比表格
 ```
 
-**示例 3: 复杂过滤**
+**示例 4: 复杂过滤**
 ```
 用户: "统计production namespace的Critical故障"
 → 启动 flashduty-incident-analyzer
@@ -214,5 +214,5 @@ Task({
 ...
 
 ### 摘要
-所有分析的综合洞察...
+合并各 Agent 结果，给出整体结论...
 ```

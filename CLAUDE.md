@@ -47,12 +47,9 @@ flashduty-assistant/
 - **职责**：获取数据、执行分析、返回结构化结果
 - **特点**：独立上下文、可并行、范围聚焦
 
-### 为什么采用此架构？
+### 为什么这样设计？
 
-1. **独立上下文**：每个 Sub-Agent 有自己的对话历史
-2. **并行执行**：多个 Sub-Agent 可同时运行
-3. **清晰分离**：Skill 聚焦"何时行动"，Agent 聚焦"如何行动"
-4. **更好性能**：并行数据获取减少延迟
+每个 Sub-Agent 有独立上下文，不会互相干扰；多个 Agent 可以并行跑，比如同时分析三个事件。Skill 只管「什么时候行动」，Agent 只管「怎么干」，职责清晰。
 
 ## Agent 定义 (AGENT.md)
 
@@ -185,17 +182,14 @@ const tasks = dimensions.map(dim => Task({
 
 ## 何时使用 Sub-Agent
 
-### 始终使用 Sub-Agent
-- 复杂数据聚合
-- 多源数据获取（时间线 + 告警 + 相关事件）
-- 需要多步骤的分析
-- 可并行化操作
-- **SRE 实践**：事后分析、错误预算追踪、琐事分析
+### 始终使用 Sub-Agent 的场景
+- 需要多步分析或多源数据获取（时间线 + 告警 + 关联事件）
+- 可并行化的调用
+- SRE 实践：事后分析、错误预算、琐事分析
 
-### 直接 MCP 工具执行
-- 简单 CRUD 操作（使用已知 ID 进行 ack/resolve/comment）
-- 参数清晰的单工具调用
-- 需要立即用户反馈
+### 直接调用 MCP 工具的场景
+- 已知 ID 的简单 CRUD（ack / resolve / comment）
+- 参数明确的单工具调用
 
 ## SRE Agent 使用
 
@@ -262,8 +256,7 @@ Task({
 
 - Sub-Agent 使用 `subagent_type: "general-purpose"` 运行
 - 长时间运行的并行任务使用 `run_in_background: true`
-- 始终向 Sub-Agent 提供清晰、结构化的提示
-- 在 Skill 层优雅地处理 Sub-Agent 失败
+- 向 Sub-Agent 提供清晰的结构化提示，在 Skill 层处理 Agent 失败
 - 时间参数支持两种方式：`time_range`（如 `'7d'`、`'last_week'`）或 `start_time`+`end_time`（Unix 秒级时间戳）
 - 优先使用 `time_range` 简化查询：`'1h'`、`'24h'`、`'7d'`、`'30d'`、`'1w'`、`'6M'`、`'last_day'`、`'last_week'`
 - **始终使用 `brief: true`** 查询事件/告警列表，减少响应大小，然后对关键项获取完整详情
