@@ -1,0 +1,12 @@
+{
+  "name": "flashduty-assistant",
+  "description": "FlashDuty assistant for incident management, diagnosis, team collaboration, and SRE best practices (Community)",
+  "version": "3.0.0",
+  "author": {
+    "name": "futuretea",
+    "email": "futuretea1024@gmail.com"
+  },
+  "repository": "https://github.com/futuretea/flashduty-assistant",
+  "license": "MIT",
+  "keywords": ["flashduty", "incident-management", "sre", "on-call", "monitoring", "postmortem", "error-budget"]
+}
